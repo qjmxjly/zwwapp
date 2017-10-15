@@ -1,0 +1,110 @@
+<!DOCTYPE HTML><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+</html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <h3>WebSocketTest</h3>
+        <div id="login">
+            <div>
+                <input id="serverIP" type="text" placeholder="服务器IP" value="192.168.2.103" autofocus="autofocus" />
+                <input id="serverPort" type="text" placeholder="服务器端口" value="8888" />
+                <input id="btnConnect" type="button" value="连接" onclick="connect()" />
+            </div>
+			<br>
+            <div style="display:none">
+                <input id="sendText" type="text" placeholder="发送文本" value="custom command" />
+                <input id="btnSend" type="button" value="发送" onclick="send()" />
+            </div>
+            <div>
+                <div>
+                    来自服务端的消息<button onclick="javascript:$('txtContent').value=''">clear</button>
+                </div>
+                <textarea id="txtContent" cols="50" rows="10" readonly="readonly"></textarea>
+            </div>
+        </div>
+
+		<div style="font-size:45px;">
+		<button onclick="sendCommand('game_start')">开始游戏</button>  
+		<br>
+		<button onclick="btnCommand('btn_left','press')">&larr;</button>  
+		<button onclick="btnCommand('btn_right','press')">&rarr;</button>  
+		<button onclick="btnCommand('btn_up','press')">&uarr;</button>  
+		<button onclick="btnCommand('btn_down','press')">&darr;</button>  
+		<button onclick="btnCommand('btn_grab','press')">go</button>  
+		</div>
+
+    </body>
+    <script>
+        var socket;
+
+		/**
+		* 发送事件函数
+		* param btn 实体按钮id  上方向：btn_up,  下方向：btn_down, 左方向：btn_left, 右方向：btn_right, 抓取:btn_grab
+		* param state 操作状态 按下：press   释放：release (btn_grab只有press)
+		*
+		* 开始游戏前客户端发送 game_start, 服务器端返回 game_ready
+		* 游戏结果 服务器端返回 game_result|win 或 game_result|lose 同时游戏结束
+
+		*/
+		function btnCommand(btn, state) {
+			if(!socket) {alert('未连接');return;}
+			if(!state) state = '';
+            socket.send(btn+'|'+state);
+		}
+
+		function sendCommand(cmd) {
+			if(!socket) {alert('未连接');return;}
+            socket.send(cmd);
+		}
+		
+
+        function connect() {
+            var host = "ws://" + $("serverIP").value + ":" + $("serverPort").value + "/"
+            socket = new WebSocket(host);
+            try {
+
+                socket.onopen = function (msg) {
+                    $("btnConnect").disabled = true;
+                    alert("连接成功！");
+                };
+
+                socket.onmessage = function (msg) {
+                    if (typeof msg.data == "string") {
+                        displayContent(msg.data);
+                    }
+                    else {
+                        alert("非文本消息");
+                    }
+                };
+
+                socket.onclose = function (msg) { alert("socket closed!") };
+            }
+            catch (ex) {
+                log(ex);
+            }
+        }
+
+        function send() {
+			if(!socket) {alert('未连接');return;}
+            var msg = $("sendText").value
+            socket.send(msg);
+        }
+
+        window.onbeforeunload = function () {
+            try {
+                socket.close();
+                socket = null;
+            }
+            catch (ex) {
+            }
+        };
+
+        function $(id) { return document.getElementById(id); }
+        function displayContent(msg) {
+            $("txtContent").value += "\r\n" + msg;
+        }
+
+        function onkey(event) { if (event.keyCode == 13) { send(); } }
+    </script>
+</html>
