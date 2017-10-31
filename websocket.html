@@ -5,10 +5,22 @@
     </head>
     <body>
         <h3>WebSocketTest</h3>
+		<div>
+		<pre style="font-size:10px">
+/**
+* 发送事件函数
+* param btn 实体按钮id  上方向：btn_up,  下方向：btn_down, 左方向：btn_left, 右方向：btn_right, 抓取:btn_grab
+* param state 操作状态 按下：press   释放：release (btn_grab只有press)
+*
+* 开始游戏前客户端发送 game_start, 服务器端返回 game_ready|ok 或 game_ready|error
+* 游戏结果 服务器端返回 game_result|win 或 game_result|lose 同时游戏结束
+
+*/
+		</pre>
+		</div>
         <div id="login">
             <div>
-                <input id="serverIP" type="text" placeholder="服务器IP" value="192.168.2.103" autofocus="autofocus" />
-                <input id="serverPort" type="text" placeholder="服务器端口" value="8888" />
+                <input id="serverIP" type="text" placeholder="服务器IP" value="47.93.240.240:8888/websocket" autofocus="autofocus" />
                 <input id="btnConnect" type="button" value="连接" onclick="connect()" />
             </div>
 			<br>
@@ -27,11 +39,11 @@
 		<div style="font-size:45px;">
 		<button onclick="sendCommand('game_start')">开始游戏</button>  
 		<br>
-		<button onclick="btnCommand('btn_left','press')">&larr;</button>  
-		<button onclick="btnCommand('btn_right','press')">&rarr;</button>  
-		<button onclick="btnCommand('btn_up','press')">&uarr;</button>  
-		<button onclick="btnCommand('btn_down','press')">&darr;</button>  
-		<button onclick="btnCommand('btn_grab','press')">go</button>  
+		<button onclick="sendCommand('btn_left','press')">&larr;</button>  
+		<button onclick="sendCommand('btn_right','press')">&rarr;</button>  
+		<button onclick="sendCommand('btn_up','press')">&uarr;</button>  
+		<button onclick="sendCommand('btn_down','press')">&darr;</button>  
+		<button onclick="sendCommand('btn_grab','press')">go</button>  
 		</div>
 
     </body>
@@ -43,30 +55,24 @@
 		* param btn 实体按钮id  上方向：btn_up,  下方向：btn_down, 左方向：btn_left, 右方向：btn_right, 抓取:btn_grab
 		* param state 操作状态 按下：press   释放：release (btn_grab只有press)
 		*
-		* 开始游戏前客户端发送 game_start, 服务器端返回 game_ready
+		* 开始游戏前客户端发送 game_start, 服务器端返回 game_ready|ok 或 game_ready|error
 		* 游戏结果 服务器端返回 game_result|win 或 game_result|lose 同时游戏结束
 
 		*/
-		function btnCommand(btn, state) {
+		function sendCommand(btn, state) {
 			if(!socket) {alert('未连接');return;}
 			if(!state) state = '';
             socket.send(btn+'|'+state);
-		}
-
-		function sendCommand(cmd) {
-			if(!socket) {alert('未连接');return;}
-            socket.send(cmd);
-		}
-		
+		}		
 
         function connect() {
-            var host = "ws://" + $("serverIP").value + ":" + $("serverPort").value + "/"
+            var host = "ws://" + $("serverIP").value;
             socket = new WebSocket(host);
             try {
 
                 socket.onopen = function (msg) {
-                    $("btnConnect").disabled = true;
-                    alert("连接成功！");
+					$("btnConnect").disabled = true;
+		            alert("连接成功！");
                 };
 
                 socket.onmessage = function (msg) {
@@ -103,6 +109,8 @@
         function $(id) { return document.getElementById(id); }
         function displayContent(msg) {
             $("txtContent").value += "\r\n" + msg;
+			$('txtContent').scrollTop = $('txtContent').scrollHeight; // good  
+
         }
 
         function onkey(event) { if (event.keyCode == 13) { send(); } }
