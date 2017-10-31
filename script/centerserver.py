@@ -10,27 +10,46 @@ from bottle import request, Bottle, abort
 from gevent.pywsgi import WSGIServer
 from geventwebsocket import WebSocketError
 from geventwebsocket.handler import WebSocketHandler
- 
+from ws4py.client.threadedclient import WebSocketClient
+
+
 app = Bottle()
 @app.route('/websocket')
 def handle_websocket():
-    wsock = request.environ.get('wsgi.websocket')
-    if not wsock:
+    serversock = request.environ.get('wsgi.websocket')
+    if not serversock:
         abort(400, 'Expected WebSocket request.')
     while True:
         try:
-            msg = wsock.receive()
+            msg = serversock.receive()
             if msg is not None:  
-                if msg == 'game_start|': 
-                    retMsg = 'game_ready|ok'
-                elif '|' in msg:
+                if '|' in msg:
                     cmdArr = msg.split('|', 1)
-                    retMsg = 'you press ' + cmdArr[0]
+					if cmdArr[0] == 'connect':
+						try:
+							clientSock = WebSocketClient('ws://127.0.0.1:8989/websocket', protocols=['http-only', 'chat'])
+							clientSock.connect()
+							clientSock.send('connect|')
+						except WebSocketError:
+							clientSock.close()
+							print 'connect client error' 
+							
+					else
+						if clientSock is None:
+							break
+						else:
+							clientSock.send(msg)
+							while True:
+								try:
+									cmsg = clientSock.receive()
+									retMsg = cmsg
+								except WebSocktError:
+									break
                 else:
                     retMsg = 'unsupport'
 
                 if retMsg is not None:
-                    wsock.send(retMsg)
+                    serversock.send(retMsg)
             else: break
 
         except WebSocketError:
@@ -38,36 +57,3 @@ def handle_websocket():
  
 server = WSGIServer(("0.0.0.0", 8888), app, handler_class=WebSocketHandler)
 server.serve_forever()
-
-
-"""
-from ws4py.client.threadedclient import WebSocketClient
-
-class DummyClient(WebSocketClient):
-    def opened(self):
-        def data_provider():
-            for i in range(1, 200, 25):
-                yield "#" * i
-
-        self.send(data_provider())
-
-        for i in range(0, 200, 25):
-            print i
-            self.send("*" * i)
-
-    def closed(self, code, reason=None):
-        print "Closed down", code, reason
-
-    def received_message(self, m):
-        print m
-        if len(m) == 175:
-            self.close(reason='Bye bye')
-
-if __name__ == '__main__':
-    try:
-        ws = DummyClient('ws://localhost:9000/', protocols=['http-only', 'chat'])
-        ws.connect()
-        ws.run_forever()
-    except KeyboardInterrupt:
-        ws.close()
-   """
