@@ -10,47 +10,60 @@ from bottle import request, Bottle, abort
 from gevent.pywsgi import WSGIServer
 from geventwebsocket import WebSocketError
 from geventwebsocket.handler import WebSocketHandler
-from ws4py.client.threadedclient import WebSocketClient
+import websocket
+import threading
 
+import gevent
 
 app = Bottle()
 @app.route('/websocket')
 def handle_websocket():
-    serversock = request.environ.get('wsgi.websocket')
-    if not serversock:
+    retMsg = None
+    ClientSock = None
+    ServerSock = request.environ.get('wsgi.websocket')
+
+    if not ServerSock:
         abort(400, 'Expected WebSocket request.')
+    else:
+        ServerSock.send('connected Center Server')
     while True:
         try:
-            msg = serversock.receive()
+            msg = ServerSock.receive()
             if msg is not None:  
                 if '|' in msg:
                     cmdArr = msg.split('|', 1)
-					if cmdArr[0] == 'connect':
-						try:
-							clientSock = WebSocketClient('ws://127.0.0.1:8989/websocket', protocols=['http-only', 'chat'])
-							clientSock.connect()
-							clientSock.send('connect|')
-						except WebSocketError:
-							clientSock.close()
-							print 'connect client error' 
-							
-					else
-						if clientSock is None:
-							break
-						else:
-							clientSock.send(msg)
-							while True:
-								try:
-									cmsg = clientSock.receive()
-									retMsg = cmsg
-								except WebSocktError:
-									break
+
+                    if cmdArr[0] == 'connect':
+
+                        
+                        def on_message(ws, message):
+                            ServerSock.send(message)
+
+                        def on_close(ws):
+                            print "### closed ###"
+
+                        websocket.enableTrace(True)
+                        ClientSock = websocket.WebSocketApp("ws://127.0.0.1:8899/websocket", on_message = on_message, on_close = on_close)
+                        wst = threading.Thread(target=ClientSock.run_forever)
+                        wst.daemon = True
+                        wst.start()
+                        
+                        print('connected client')
+                        
+                    else:
+                        if ClientSock is None:
+                            ServerSock.send('error|notConnectClient')
+                            break
+                        else:
+                            ClientSock.send(msg)                            
                 else:
                     retMsg = 'unsupport'
 
                 if retMsg is not None:
-                    serversock.send(retMsg)
-            else: break
+                    ServerSock.send(retMsg)
+            else:
+                print 'bbb'
+                ServerSock.send('error|empty')
 
         except WebSocketError:
             break

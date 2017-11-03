@@ -71,6 +71,7 @@
             try {
 
                 socket.onopen = function (msg) {
+					socket.send('connect|001');
 					$("btnConnect").disabled = true;
 		            alert("连接成功！");
                 };
